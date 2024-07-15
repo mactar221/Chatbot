@@ -1,4 +1,8 @@
 opencv-python-headless==4.5.3.56
-pandas
 av==10.0.0
 deepface==0.0.75
+streamlit==1.11.1
+matplotlib==3.5.1
+seaborn==0.11.1
+numpy==1.20.3
+pandas==1.1.1
