@@ -29,7 +29,7 @@ def main():
 
     if uploaded_file is not None:
         file_bytes = bytearray(uploaded_file.read())
-        image = cv2.imdecode(np.array(file_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+        image = cv2.imdecode(cv2.imdecode(np.asarray(file_bytes, dtype=np.uint8), cv2.IMREAD_COLOR))
 
         st.image(image, channels="BGR", caption='Image originale')
 
@@ -45,10 +45,17 @@ def main():
                 cv2.rectangle(image, (x, y), (x+w, y+h), bgr_color, 4)
             st.image(image, channels="BGR", caption='Image avec visages détectés')
 
-            if st.button('Télécharger image avec visages détectés'):
-                output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
-                save_image_with_faces(image, faces, output_path)
-                st.success(f'L\'image avec visages détectés a été enregistrée sous {output_path}')
+            # Save the image with detected faces
+            output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
+            save_image_with_faces(image, faces, output_path)
+
+            with open(output_path, 'rb') as file:
+                btn = st.download_button(
+                    label="Télécharger image avec visages détectés",
+                    data=file,
+                    file_name="image_with_faces.jpg",
+                    mime="image/jpeg"
+                )
 
 if __name__ == '__main__':
     main()
