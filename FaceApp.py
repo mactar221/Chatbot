@@ -1,5 +1,6 @@
 import streamlit as st
 import cv2
+import io
 
 # Charger le modèle cascade pour la détection de visages
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -28,8 +29,9 @@ def main():
     uploaded_file = st.file_uploader("Uploader une image", type=['jpg', 'png', 'jpeg'])
 
     if uploaded_file is not None:
-        file_bytes = bytearray(uploaded_file.read())
-        image = cv2.imdecode(cv2.imdecode(np.asarray(file_bytes, dtype=np.uint8), cv2.IMREAD_COLOR))
+        # Convertir le fichier en un format que OpenCV peut lire
+        file_bytes = uploaded_file.read()
+        image = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
 
         st.image(image, channels="BGR", caption='Image originale')
 
