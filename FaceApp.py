@@ -1,5 +1,6 @@
 import streamlit as st
 import cv2
+from PIL import Image
 import io
 
 # Charger le modèle cascade pour la détection de visages
@@ -29,9 +30,12 @@ def main():
     uploaded_file = st.file_uploader("Uploader une image", type=['jpg', 'png', 'jpeg'])
 
     if uploaded_file is not None:
-        # Convertir le fichier en un format que OpenCV peut lire
-        file_bytes = uploaded_file.read()
-        image = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
+        # Lire le fichier image avec PIL
+        image = Image.open(uploaded_file)
+        image = image.convert("RGB")  # Convertir en RGB si ce n'est pas déjà le cas
+
+        # Convertir l'image PIL en format OpenCV
+        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
         st.image(image, channels="BGR", caption='Image originale')
 
