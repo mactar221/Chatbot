@@ -1,22 +1,23 @@
 import streamlit as st
 from PIL import Image, ImageDraw
 from deepface import DeepFace
-import io
+import tempfile
+import os
 
 # Fonction pour détecter les visages
 def detect_faces(image):
-    # Convertir l'image PIL en format RGB
-    rgb_image = image.convert("RGB")
-
-    # Convertir l'image PIL en bytes
-    img_bytes = io.BytesIO()
-    rgb_image.save(img_bytes, format='JPEG')
-    img_bytes = img_bytes.getvalue()
-
+    # Convertir l'image PIL en fichier temporaire
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+        image.save(tmp_file, format='JPEG')
+        tmp_file_path = tmp_file.name
+    
     # Utiliser deepface pour détecter les visages
-    analysis = DeepFace.analyze(img_path=img_bytes, actions=['face_detection'])
+    analysis = DeepFace.analyze(img_path=tmp_file_path, actions=['face_detection'])
+    
+    # Supprimer le fichier temporaire
+    os.remove(tmp_file_path)
+    
     face_boxes = analysis[0]['region']
-
     return face_boxes
 
 # Fonction pour dessiner et enregistrer l'image avec les visages détectés
@@ -58,5 +59,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
