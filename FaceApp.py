@@ -1,62 +1,55 @@
 import streamlit as st
-import cv2
-from PIL import Image
+from PIL import Image, ImageDraw
+from deepface import DeepFace
 import io
 
-# Charger le modèle cascade pour la détection de visages
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-
 # Fonction pour détecter les visages
-def detect_faces(image, scaleFactor, minNeighbors):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=scaleFactor, minNeighbors=minNeighbors)
-    return faces
+def detect_faces(image):
+    # Convertir l'image PIL en format RGB
+    rgb_image = image.convert("RGB")
+
+    # Convertir l'image PIL en bytes
+    img_bytes = io.BytesIO()
+    rgb_image.save(img_bytes, format='JPEG')
+    img_bytes = img_bytes.getvalue()
+
+    # Utiliser deepface pour détecter les visages
+    analysis = DeepFace.analyze(img_path=img_bytes, actions=['face_detection'])
+    face_boxes = analysis[0]['region']
+
+    return face_boxes
 
 # Fonction pour dessiner et enregistrer l'image avec les visages détectés
-def save_image_with_faces(image, faces, output_path):
-    for (x, y, w, h) in faces:
-        cv2.rectangle(image, (x, y), (x+w, y+h), (255, 0, 0), 4)  # Dessiner un rectangle bleu autour du visage
-    cv2.imwrite(output_path, image)
-
-# Fonction pour convertir la couleur hexadécimale en BGR
-def hex_to_bgr(hex_color):
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (4, 2, 0))
+def draw_faces(image, face_boxes):
+    draw = ImageDraw.Draw(image)
+    for face_box in face_boxes:
+        x, y, w, h = face_box['x'], face_box['y'], face_box['w'], face_box['h']
+        draw.rectangle([x, y, x + w, y + h], outline="red", width=4)
+    return image
 
 # Interface utilisateur avec Streamlit
 def main():
-    st.title('Détection de visages avec OpenCV et Streamlit')
+    st.title('Détection de visages avec PIL et DeepFace')
 
     uploaded_file = st.file_uploader("Uploader une image", type=['jpg', 'png', 'jpeg'])
 
     if uploaded_file is not None:
         # Lire le fichier image avec PIL
         image = Image.open(uploaded_file)
-        image = image.convert("RGB")  # Convertir en RGB si ce n'est pas déjà le cas
 
-        # Convertir l'image PIL en format OpenCV
-        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-
-        st.image(image, channels="BGR", caption='Image originale')
-
-        # Paramètres ajustables
-        scaleFactor = st.slider('scaleFactor', 1.1, 2.0, 1.2, step=0.1)
-        minNeighbors = st.slider('minNeighbors', 1, 10, 3)
-        color = st.color_picker('Choisir la couleur du rectangle', '#ff0000')  # Par défaut, rouge
-        bgr_color = hex_to_bgr(color)
+        st.image(image, caption='Image originale')
 
         if st.button('Détecter les visages'):
-            faces = detect_faces(image, scaleFactor, minNeighbors)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(image, (x, y), (x+w, y+h), bgr_color, 4)
-            st.image(image, channels="BGR", caption='Image avec visages détectés')
+            face_boxes = detect_faces(image)
+            image_with_faces = draw_faces(image, face_boxes)
+            st.image(image_with_faces, caption='Image avec visages détectés')
 
             # Save the image with detected faces
             output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
-            save_image_with_faces(image, faces, output_path)
+            image_with_faces.save(output_path)
 
             with open(output_path, 'rb') as file:
-                btn = st.download_button(
+                st.download_button(
                     label="Télécharger image avec visages détectés",
                     data=file,
                     file_name="image_with_faces.jpg",
@@ -65,4 +58,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
