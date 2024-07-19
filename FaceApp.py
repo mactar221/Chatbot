@@ -17,7 +17,8 @@ def detect_faces(image):
     # Supprimer le fichier temporaire
     os.remove(tmp_file_path)
     
-    face_boxes = analysis[0]['region']
+    # S'assurer que la clé 'region' existe et est correctement formatée
+    face_boxes = analysis[0].get('region', [])
     return face_boxes
 
 # Fonction pour dessiner et enregistrer l'image avec les visages détectés
@@ -41,21 +42,24 @@ def main():
         st.image(image, caption='Image originale')
 
         if st.button('Détecter les visages'):
-            face_boxes = detect_faces(image)
-            image_with_faces = draw_faces(image, face_boxes)
-            st.image(image_with_faces, caption='Image avec visages détectés')
+            try:
+                face_boxes = detect_faces(image)
+                image_with_faces = draw_faces(image, face_boxes)
+                st.image(image_with_faces, caption='Image avec visages détectés')
 
-            # Save the image with detected faces
-            output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
-            image_with_faces.save(output_path)
+                # Save the image with detected faces
+                output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
+                image_with_faces.save(output_path)
 
-            with open(output_path, 'rb') as file:
-                st.download_button(
-                    label="Télécharger image avec visages détectés",
-                    data=file,
-                    file_name="image_with_faces.jpg",
-                    mime="image/jpeg"
-                )
+                with open(output_path, 'rb') as file:
+                    st.download_button(
+                        label="Télécharger image avec visages détectés",
+                        data=file,
+                        file_name="image_with_faces.jpg",
+                        mime="image/jpeg"
+                    )
+            except Exception as e:
+                st.error(f"Erreur lors de la détection des visages : {e}")
 
 if __name__ == '__main__':
     main()
