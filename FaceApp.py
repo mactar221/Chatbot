@@ -6,26 +6,35 @@ import os
 
 # Fonction pour détecter les visages
 def detect_faces(image):
-    # Convertir l'image PIL en fichier temporaire
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-        image.save(tmp_file, format='JPEG')
-        tmp_file_path = tmp_file.name
-    
-    # Utiliser deepface pour détecter les visages
-    analysis = DeepFace.analyze(img_path=tmp_file_path, actions=['face_detection'])
-    
-    # Supprimer le fichier temporaire
-    os.remove(tmp_file_path)
-    
-    # S'assurer que la clé 'region' existe et est correctement formatée
-    face_boxes = analysis[0].get('region', [])
-    return face_boxes
+    try:
+        # Convertir l'image PIL en fichier temporaire
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            image.save(tmp_file, format='JPEG')
+            tmp_file_path = tmp_file.name
+
+        # Utiliser deepface pour détecter les visages
+        analysis = DeepFace.analyze(img_path=tmp_file_path, actions=['face_detection'])
+        
+        # Supprimer le fichier temporaire
+        os.remove(tmp_file_path)
+        
+        # Vérifier le format de la réponse
+        if isinstance(analysis, list) and len(analysis) > 0:
+            face_boxes = analysis[0].get('region', [])
+        else:
+            st.error("Format de réponse inattendu de DeepFace")
+            face_boxes = []
+        
+        return face_boxes
+    except Exception as e:
+        st.error(f"Erreur lors de la détection des visages : {e}")
+        return []
 
 # Fonction pour dessiner et enregistrer l'image avec les visages détectés
 def draw_faces(image, face_boxes):
     draw = ImageDraw.Draw(image)
     for face_box in face_boxes:
-        x, y, w, h = face_box['x'], face_box['y'], face_box['w'], face_box['h']
+        x, y, w, h = face_box.get('x', 0), face_box.get('y', 0), face_box.get('w', 0), face_box.get('h', 0)
         draw.rectangle([x, y, x + w, y + h], outline="red", width=4)
     return image
 
@@ -36,13 +45,13 @@ def main():
     uploaded_file = st.file_uploader("Uploader une image", type=['jpg', 'png', 'jpeg'])
 
     if uploaded_file is not None:
-        # Lire le fichier image avec PIL
-        image = Image.open(uploaded_file)
+        try:
+            # Lire le fichier image avec PIL
+            image = Image.open(uploaded_file)
 
-        st.image(image, caption='Image originale')
+            st.image(image, caption='Image originale')
 
-        if st.button('Détecter les visages'):
-            try:
+            if st.button('Détecter les visages'):
                 face_boxes = detect_faces(image)
                 image_with_faces = draw_faces(image, face_boxes)
                 st.image(image_with_faces, caption='Image avec visages détectés')
@@ -58,11 +67,12 @@ def main():
                         file_name="image_with_faces.jpg",
                         mime="image/jpeg"
                     )
-            except Exception as e:
-                st.error(f"Erreur lors de la détection des visages : {e}")
+        except Exception as e:
+            st.error(f"Erreur lors du traitement de l'image : {e}")
 
 if __name__ == '__main__':
     main()
+
 
 
 
