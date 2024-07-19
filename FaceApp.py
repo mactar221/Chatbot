@@ -1,78 +1,62 @@
 import streamlit as st
-from PIL import Image, ImageDraw
-from deepface import DeepFace
-import tempfile
-import os
+import cv2
+import numpy as np
+
+# Charger le modèle cascade pour la détection de visages
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Fonction pour détecter les visages
-def detect_faces(image):
-    try:
-        # Convertir l'image PIL en fichier temporaire
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-            image.save(tmp_file, format='JPEG')
-            tmp_file_path = tmp_file.name
-
-        # Utiliser deepface pour détecter les visages
-        analysis = DeepFace.analyze(img_path=tmp_file_path, actions=['face_detection'])
-        
-        # Supprimer le fichier temporaire
-        os.remove(tmp_file_path)
-        
-        # Vérifier le format de la réponse
-        if isinstance(analysis, list) and len(analysis) > 0:
-            face_boxes = analysis[0].get('region', [])
-        else:
-            st.error("Format de réponse inattendu de DeepFace")
-            face_boxes = []
-        
-        return face_boxes
-    except Exception as e:
-        st.error(f"Erreur lors de la détection des visages : {e}")
-        return []
+def detect_faces(image, scaleFactor, minNeighbors):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=scaleFactor, minNeighbors=minNeighbors)
+    return faces
 
 # Fonction pour dessiner et enregistrer l'image avec les visages détectés
-def draw_faces(image, face_boxes):
-    draw = ImageDraw.Draw(image)
-    for face_box in face_boxes:
-        x, y, w, h = face_box.get('x', 0), face_box.get('y', 0), face_box.get('w', 0), face_box.get('h', 0)
-        draw.rectangle([x, y, x + w, y + h], outline="red", width=4)
-    return image
+def save_image_with_faces(image, faces, output_path):
+    for (x, y, w, h) in faces:
+        cv2.rectangle(image, (x, y), (x+w, y+h), (255, 0, 0), 4)  # Dessiner un rectangle bleu autour du visage
+    cv2.imwrite(output_path, image)
+
+# Fonction pour convertir la couleur hexadécimale en BGR
+def hex_to_bgr(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (4, 2, 0))
 
 # Interface utilisateur avec Streamlit
 def main():
-    st.title('Détection de visages avec PIL et DeepFace')
+    st.title('Détection de visages avec OpenCV et Streamlit')
 
     uploaded_file = st.file_uploader("Uploader une image", type=['jpg', 'png', 'jpeg'])
 
     if uploaded_file is not None:
-        try:
-            # Lire le fichier image avec PIL
-            image = Image.open(uploaded_file)
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        image = cv2.imdecode(file_bytes, 1)
 
-            st.image(image, caption='Image originale')
+        st.image(image, channels="BGR", caption='Image originale')
 
-            if st.button('Détecter les visages'):
-                face_boxes = detect_faces(image)
-                image_with_faces = draw_faces(image, face_boxes)
-                st.image(image_with_faces, caption='Image avec visages détectés')
+        # Paramètres ajustables
+        scaleFactor = st.slider('scaleFactor', 1.1, 2.0, 1.2, step=0.1)
+        minNeighbors = st.slider('minNeighbors', 1, 10, 3)
+        color = st.color_picker('Choisir la couleur du rectangle', '#ff0000')  # Par défaut, rouge
+        bgr_color = hex_to_bgr(color)
 
-                # Save the image with detected faces
-                output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
-                image_with_faces.save(output_path)
+        if st.button('Détecter les visages'):
+            faces = detect_faces(image, scaleFactor, minNeighbors)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(image, (x, y), (x+w, y+h), bgr_color, 4)
+            st.image(image, channels="BGR", caption='Image avec visages détectés')
 
-                with open(output_path, 'rb') as file:
-                    st.download_button(
-                        label="Télécharger image avec visages détectés",
-                        data=file,
-                        file_name="image_with_faces.jpg",
-                        mime="image/jpeg"
-                    )
-        except Exception as e:
-            st.error(f"Erreur lors du traitement de l'image : {e}")
+            # Save the image with detected faces
+            output_path = 'image_with_faces.jpg'  # Nom du fichier de sortie
+            save_image_with_faces(image, faces, output_path)
+
+            with open(output_path, 'rb') as file:
+                btn = st.download_button(
+                    label="Télécharger image avec visages détectés",
+                    data=file,
+                    file_name="image_with_faces.jpg",
+                    mime="image/jpeg"
+                )
 
 if __name__ == '__main__':
     main()
-
-
-
-
